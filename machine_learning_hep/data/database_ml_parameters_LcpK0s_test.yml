@@ -190,13 +190,13 @@ LcpK0s_test:
     data:
       nperiods: 1
       nprocessesparallel: 50
-      maxfiles : [-1] #list of periods
+      maxfiles : [20] #list of periods
       chunksizeunp : [1000] #list of periods
       chunksizeskim: [1000] #list of periods
       fracmerge : [0.3] #list of periods
       seedmerge: [12] #list of periods
       period: [LHC18pp] #list of periods
-      unmerged_tree_dir: [/Users/gianmicheleinnocenti/samplesMLexample/data/unmerged] #list of periods
+      unmerged_tree_dir: [/u/ginnocen/samplesMLexample/data/unmerged] #list of periods
       pkl: [LcpK0s_test/datapkl] #list of periods
       pkl_skimmed: [LcpK0s_test/datapklsk] #list of periods
       pkl_skimmed_merge_for_ml: [LcpK0s_test/datapklskML] #list of periods
@@ -205,13 +205,13 @@ LcpK0s_test:
     mc:
       nperiods: 1
       nprocessesparallel: 50
-      maxfiles : [-1] #list of periods
+      maxfiles : [20] #list of periods
       chunksizeunp : [1000] #list of periods
       chunksizeskim: [1000] #list of periods
       fracmerge : [1.0] #list of periods
       seedmerge: [12] #list of periods
       period: [LHC18pp] #list of periods
-      unmerged_tree_dir: [/Users/gianmicheleinnocenti/samplesMLexample/mc/unmerged] # this is pPb MC, #list of periods
+      unmerged_tree_dir: [/u/ginnocen/samplesMLexample/mc/unmerged] # this is pPb MC, #list of periods
       pkl: [LcpK0s_test/mcpkl] #list of periods
       pkl_skimmed: [LcpK0s_test/mcpklsk] #list of periods
       pkl_skimmed_merge_for_ml: [LcpK0s_test/mcpklskML] #list of periods
