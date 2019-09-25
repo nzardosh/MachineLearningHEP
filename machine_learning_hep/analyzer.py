@@ -1147,11 +1147,12 @@ class Analyzer:
         fileouts = TFile.Open("%s/side_band_sub%s%s.root" % \
                               (self.d_resultsallpdata, self.case, self.typean), "recreate")
         zbin =[]
-        for zbin_i in range(21) :
-            zbin.append(zbin,-0.5+zbin_i*0.1)
+        for zbin_i in range(21):
+            zbin.append(-0.5+zbin_i*0.1)
         zbinarray=array("d",zbin)
         jetptbin = [0.0,5.0,15.0,35.0]
-        hzvsjetpt = TH2F("hzvsjetpt","",20, zbinarray, 3, jetptbin)
+        jetptbinarray=array("d",jetptbin)
+        hzvsjetpt = TH2F("hzvsjetpt","",20, zbinarray, 3, jetptbinarray)
         for imult in range(self.p_nbin2):
             heff = eff_file.Get("eff_mult%d" % imult)
             hz = None
@@ -1191,10 +1192,12 @@ class Analyzer:
                 hzbkg = hzbkgleft.Clone("hzbkg" + suffix)
                 hzbkg.Add(hzbkgright)
                 hzbkg_scaled = hzbkg.Clone("hzbkg_scaled" + suffix)
-                bkg_fit = func_file.Get("bkgrefit" + suffix)
-                area_scale_denominator = bkg_fit.Integral(masslow9sig, masslow4sig) + \
-                bkg_fit.Integral(masshigh4sig, masshigh9sig)
-                area_scale = bkg_fit.Integral(masslow2sig, masshigh2sig)/area_scale_denominator
+                #bkg_fit = func_file.Get("bkgrefit" + suffix)
+                #bkg_fit = mass_fitter.GetBackgroundFullRangeFunc() 
+                #area_scale_denominator = bkg_fit.Integral(masslow9sig, masslow4sig) + \
+                #bkg_fit.Integral(masshigh4sig, masshigh9sig)
+                #area_scale = bkg_fit.Integral(masslow2sig, masshigh2sig)/area_scale_denominator
+                area_scale =0.4
                 hzsub = hzsig.Clone("hzsub" + suffix)
                 hzsub.Add(hzbkg, -1*area_scale)
                 hzsub_noteffscaled = hzsub.Clone("hzsub_noteffscaled" + suffix)
