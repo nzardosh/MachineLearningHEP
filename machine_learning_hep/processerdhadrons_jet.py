@@ -727,7 +727,6 @@ class ProcesserDhadrons_jet(Processer): # pylint: disable=invalid-name, too-many
         zbin_recoand pseudorapidity. Reco candidates according to evt selection, eta
         jets, trigger and ml probability of the HF hadron
         """
-
         out_file = TFile.Open(self.l_historesp[index], "recreate")
         list_df_mc_reco = []
         list_df_mc_gen = []

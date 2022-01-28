@@ -318,16 +318,16 @@ D0pp:
         mc: null
       data: &data_out_default
         runselection: [null, null, null] #FIXME
-        results: [/data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_2016_data/593_20210223-2051/resultsMBjetvspt,
-                  /data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_2017_data/593_20210223-2051/resultsMBjetvspt,
-                  /data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_2018_data/593_20210223-2051/resultsMBjetvspt] #list of periods
-        resultsallp: /data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_data/resultsMBjetvspt
+        results: [/data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_2016_data/593_20210223-2051/resultsMBjetvspt,
+                  /data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_2017_data/593_20210223-2051/resultsMBjetvspt,
+                  /data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_2018_data/593_20210223-2051/resultsMBjetvspt] #list of periods
+        resultsallp: /data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_data/resultsMBjetvspt
       mc: &mc_out_default
         runselection: [null, null, null] #FIXME
-        results: [/data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_2016_mc_prodD2H/594_20210301-1015/resultsMBjetvspt,
-                  /data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_2017_mc_prodD2H/594_20210301-1015/resultsMBjetvspt,
-                  /data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_2018_mc_prodD2H/594_20210301-1015/resultsMBjetvspt] #list of periods
-        resultsallp: /data/DerivedResultsJets/D0kAnywithJets/vAN-20210223_ROOT6-1/zg/default/default/pp_mc_prodD2H/resultsMBjetvspt
+        results: [/data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_2016_mc_prodD2H/594_20210301-1015/resultsMBjetvspt,
+                  /data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_2017_mc_prodD2H/594_20210301-1015/resultsMBjetvspt,
+                  /data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_2018_mc_prodD2H/594_20210301-1015/resultsMBjetvspt] #list of periods
+        resultsallp: /data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20210223_ROOT6-1/zg/default/default/pp_mc_prodD2H/resultsMBjetvspt
       data_proc: # alternative processor output used as the analyzer input
         <<: *data_out_default
       mc_proc: # alternative processor output used as the analyzer input

@@ -379,11 +379,14 @@ LcpK0spp:
       usejetptbinned_deff: false
       doeff_resp: true
 <<<<<<< HEAD
+<<<<<<< HEAD
       unmatched_gen: true
 =======
       effcor_kinematic: true
       effcor_kinematic_full: true
 >>>>>>> syncing R-shape, FF and D0 analyses
+=======
+>>>>>>> small changees to the R-shape analysis update
 
       latexnamehadron: "#Lambda_{c}^{#plus}"
       latexnamedecay: "p K^{0}_{S}"
@@ -422,10 +425,14 @@ LcpK0spp:
       data: &data_out_default
         runselection: [null, null, null]
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> small changees to the R-shape analysis update
         results: [/data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_2016_data/593_20210223-2051/resultsMBjetvspt,
                   /data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_2017_data/593_20210223-2051/resultsMBjetvspt,
                   /data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_2018_data/593_20210223-2051/resultsMBjetvspt] #list of periods
         resultsallp: /data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_data/resultsMBjetvspt
+<<<<<<< HEAD
       mc: &mc_out_default
         runselection: [null, null, null]
         results: [/data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_2016_mc_prodD2H/594_20210301-1015/resultsMBjetvspt,
@@ -444,6 +451,14 @@ LcpK0spp:
                   /data/DerivedResultsJets/LcNimaTest/vAN-20210223_ROOT6-1/ff/default/default/pp_2018_mc_prodD2H/594_20210301-1015/resultsMBjetvspt] #list of periods
         resultsallp: /data/DerivedResultsJets/LcNimaTest/vAN-20210223_ROOT6-1/ff/default/default/pp_mc_prodD2H/resultsMBjetvspt
 >>>>>>> syncing R-shape, FF and D0 analyses
+=======
+      mc: &mc_out_default
+        runselection: [null, null, null]
+        results: [/data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_2016_mc_prodD2H/594_20210301-1015/resultsMBjetvspt,
+                  /data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_2017_mc_prodD2H/594_20210301-1015/resultsMBjetvspt,
+                  /data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_2018_mc_prodD2H/594_20210301-1015/resultsMBjetvspt] #list of periods
+        resultsallp: /data/DerivedResultsJets/LcNimaTest_3GeV_JetsPaper/vAN-20210223_ROOT6-1/ff/default/default/pp_mc_prodD2H/resultsMBjetvspt
+>>>>>>> small changees to the R-shape analysis update
       data_proc: # alternative processor output used as the analyzer input
         <<: *data_out_default
       mc_proc: # alternative processor output used as the analyzer input
@@ -501,10 +516,14 @@ LcpK0spp:
       pythia8_prompt_variations_path: /data/PYTHIA8/trees_pythia8_pr_
       pythia8_prompt_variations: ["default","colour2soft"]
 <<<<<<< HEAD
+<<<<<<< HEAD
       pythia8_prompt_variations_legend:  ["PYTHIA 8 Monash","PYTHIA 8 CR Mode 2"]
 =======
       pythia8_prompt_variations_legend:  ["PYTHIA 8 (Monash)","PYTHIA 8 SoftQCD, mode 2"]
 >>>>>>> syncing R-shape, FF and D0 analyses
+=======
+      pythia8_prompt_variations_legend:  ["PYTHIA 8 Monash","PYTHIA 8 CR Mode 2"]
+>>>>>>> small changees to the R-shape analysis update
 
       variations_db: ./data/data_prod_20210223/database_variations_LcpK0spp_jet_FF.yml
 

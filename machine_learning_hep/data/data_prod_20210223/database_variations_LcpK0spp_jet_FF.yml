@@ -1,6 +1,6 @@
 categories:
     default:
-        activate: no
+        activate: yes
         processor: true
         label: "default"
         correlation: "corr"
