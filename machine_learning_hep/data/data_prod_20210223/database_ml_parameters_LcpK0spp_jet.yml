@@ -380,6 +380,7 @@ LcpK0spp:
       doeff_resp: true
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
       unmatched_gen: true
 =======
       effcor_kinematic: true
@@ -387,6 +388,9 @@ LcpK0spp:
 >>>>>>> syncing R-shape, FF and D0 analyses
 =======
 >>>>>>> small changees to the R-shape analysis update
+=======
+      unmatched_gen: true
+>>>>>>> further fixes to closure
 
       latexnamehadron: "#Lambda_{c}^{#plus}"
       latexnamedecay: "p K^{0}_{S}"
