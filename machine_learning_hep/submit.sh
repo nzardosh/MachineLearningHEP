@@ -3,35 +3,35 @@
 #STAGE="pre"
 #STAGE="train"
 #STAGE="apply"
-STAGE="complete"
+#STAGE="complete" #first this
 #STAGE="analyzer"
-#STAGE="variations"
-#STAGE="systematics"
+#STAGE="variations" #then this
+STAGE="systematics" #lastly this
 
 #DBDIR="data_prod_20200417"
-DBDIR="data_prod_20200304"
-#DBDIR="data_prod_20210223"
+#DBDIR="data_prod_20200304"
+DBDIR="data_prod_20210223"
 #DBDIR="pKpi"
 #DBDIR="JetAnalysis"
 
-DATABASE="D0pp"
+#DATABASE="D0pp"
 #DATABASE="Dspp"
-#DATABASE="LcpK0spp"
+DATABASE="LcpK0spp"
 #DATABASE="LcpKpi"
 
 #SUFFIX="_0417"
-SUFFIX="_0304"
+#SUFFIX="_0304"
 #SUFFIX="_0304_jet" # Lc
 #SUFFIX="010"
 #SUFFIX="3050"
-#SUFFIX="_jet"
+SUFFIX="_jet"
 
 #ANALYSIS="MBvspt"
 #ANALYSIS="MBvspt_perc_v0m"
 #ANALYSIS="MBvspt_ntrkl"
 #ANALYSIS="SPDvspt_ntrkl"
-#ANALYSIS="jet_FF"
-ANALYSIS="jet_zg"
+ANALYSIS="jet_FF"
+#ANALYSIS="jet_zg"
 #ANALYSIS="jet_r_shape_2_6"
 #ANALYSIS="jet_r_shape_6_12"
 #ANALYSIS="jet_rg"
@@ -43,7 +43,8 @@ DATABASE_VARIATION="${DATABASE}_${ANALYSIS}"
 CONFIG="submission/default_${STAGE}.yml"
 DB_DEFAULT="data/${DBDIR}/database_ml_parameters_${DATABASE_DEFAULT}.yml"
 DB_VARIATION="data/${DBDIR}/database_variations_${DATABASE_VARIATION}.yml"
-DIR_RESULTS="/data/DerivedResultsJets/D0kAnywithJets/vAN-20200304_ROOT6-1/"
+#DIR_RESULTS="/data/DerivedResultsJets/D0kAnywithJets_Nima_Test/vAN-20200304_ROOT6-1/"
+DIR_RESULTS="/data/DerivedResultsJets/LcNimaTest_3GeV/vAN-20210223_ROOT6-1/"    
 
 CMD_ANA="python do_entire_analysis.py -a ${ANALYSIS} -r ${CONFIG} -d ${DB_DEFAULT} -c"
 

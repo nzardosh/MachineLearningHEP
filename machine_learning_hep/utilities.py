@@ -576,9 +576,9 @@ def get_colour(i: int, scheme=1):
     colours = [kBlack, kBlue, kRed, kGreen + 1, kOrange + 1, kMagenta, kCyan + 1, kGray + 1, \
         kBlue + 2, kRed - 3, kGreen + 3, kYellow  + 1, kMagenta + 1, kCyan + 2, kRed + 3]
     colours_alice_point = [kBlack, kBlue + 1, kRed + 1, kGreen + 3, kMagenta + 2, kOrange + 4, \
-        kCyan + 2, kYellow + 2]
+        kCyan + 2, kYellow + 2, kOrange +2]
     colours_alice_syst = [kGray + 1, kBlue - 7, kRed - 7, kGreen - 6, kMagenta - 4, kOrange - 3, \
-        kCyan - 6, kYellow - 7]
+        kCyan - 6, kYellow - 7, kOrange -2]
     if scheme == 1:
         list_col = colours_alice_point
     elif scheme == 2:

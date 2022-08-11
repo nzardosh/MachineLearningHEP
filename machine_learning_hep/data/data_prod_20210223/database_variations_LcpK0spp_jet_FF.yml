@@ -135,9 +135,9 @@ categories:
         processor: false
         label: "feed-down"
         correlation: "corr"
-        rms: true
-        symmetrise: true
-        rms_both_sides: true
+        rms: false
+        symmetrise: false
+        rms_both_sides: false
         variations:
             tune:
                 activate: [yes, yes, yes, yes, yes, yes, yes, yes, yes]
@@ -254,6 +254,49 @@ categories:
                       pkl_skimmed_decmerged: [[/data/Derived_Vit/D0kINT7HighMultCalo_withJets/vAN-20210223_ROOT6-1/pp_2016_mc_prodD2H_trkeff/619_20210423-1225/pklskdecmerged,
                                               /data/Derived_Vit/D0kINT7HighMultCalo_withJets/vAN-20210223_ROOT6-1/pp_2017_mc_prodD2H_trkeff/619_20210423-1225/pklskdecmerged,
                                               /data/Derived_Vit/D0kINT7HighMultCalo_withJets/vAN-20210223_ROOT6-1/pp_2018_mc_prodD2H_trkeff/619_20210423-1225/pklskdecmerged]] #list of periods
+
+    binning:
+        activate: yes
+        processor: true
+        label: "binning"
+        correlation: "corr"
+        rms: true
+        symmetrise: true
+        rms_both_sides: true
+        variations:
+            pt_cand:
+#                activate: [yes, yes, yes, yes, yes, yes]
+                activate: [no, no, no, no, no, no]
+                label:
+                    - "#it{p}_{T}^{D} 4#minus24"
+                    - "#it{p}_{T}^{D} 4#minus36"
+                    - "#it{p}_{T}^{D} 4#minus48"
+                    - "#it{p}_{T}^{D} 5#minus24"
+                    - "#it{p}_{T}^{D} 5#minus36"
+                    - "#it{p}_{T}^{D} 5#minus48"
+                diffs:
+                    analysis:
+                        jet_FF:
+                            sel_an_binmin:
+                                [[4,5,6,7,8,10,12,16],  [4,5,6,7,8,10,12,16,24],  [4,5,6,7,8,10,12,16,24,36],  [5,6,7,8,10,12,16],  [5,6,7,8,10,12,16,24],  [5,6,7,8,10,12,16,24,36]]
+                            sel_an_binmax:
+                                  [[5,6,7,8,10,12,16,24], [5,6,7,8,10,12,16,24,36], [5,6,7,8,10,12,16,24,36,48], [6,7,8,10,12,16,24], [6,7,8,10,12,16,24,36], [6,7,8,10,12,16,24,36,48]]
+                            binning_matching:
+                                  [[2,2,3,3, 4, 4, 5, 5], [2,2,3,3, 4, 4, 5, 5, 6], [2,2,3,3, 4, 4, 5, 5, 6, 6], [2,3,3, 4, 4, 5, 5], [2,3,3, 4, 4, 5, 5, 6], [2,3,3, 4, 4, 5, 5, 6, 6]]
+            pt_jet:
+                activate: [yes, yes, no, no]
+                label:
+                    - "#it{p}_{T}^{jet} 5 #rightarrow 4"
+                    - "#it{p}_{T}^{jet} 35 #rightarrow 40"
+                    - "add #it{p}_{T}^{jet} 4#minus5"
+                    - "#it{p}_{T}^{jet} 5#minus35"
+                diffs:
+                    analysis:
+                        jet_FF:
+                            sel_binmin2_reco: [[4,7,15], "#", [4,5,7,15],  [5]]
+                            sel_binmax2_reco:    ["#", [7,15,40], [5,7,15,35], [35]]
+                            sel_binmin2_gen:  [[4,7,15], "#", [4,5,7,15],  [5]]
+                            sel_binmax2_gen:     ["#", [7,15,40], [5,7,15,35], [35]]
 
     cutvar:
         activate: yes  # High RAM consumption

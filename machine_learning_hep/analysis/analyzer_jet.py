@@ -3481,7 +3481,9 @@ class AnalyzerJet(Analyzer):
                     # FIXME exception for different jet pt binning pylint: disable=fixme
                     name_his_orig = name_his
                     if ibin2 == 0 and string_catvar == "binning/pt_jet_0":
-                        name_his = "unfolded_z_sel_%s_%.2f_%.2f" % (self.v_var2_binning, 8, self.lvar2_binmax_gen[ibin2])
+                        name_his = "unfolded_z_sel_%s_%.2f_%.2f" % (self.v_var2_binning, 4, self.lvar2_binmax_gen[ibin2])
+                    if ibin2 == 2 and string_catvar == "binning/pt_jet_1":
+                        name_his = "unfolded_z_sel_%s_%.2f_%.2f" % (self.v_var2_binning, self.lvar2_binmin_gen[ibin2], 40)
                     sys_var_histo = input_files_sys[sys_cat][sys_var].Get(name_his)
                     sys_var_histo_eff = input_files_eff[sys_cat][sys_var].Get(name_eff)
                     name_his = name_his_orig
