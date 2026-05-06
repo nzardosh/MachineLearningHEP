@@ -48,10 +48,14 @@ class RooFitter:
         model = None
         for comp, spec in fit_spec.get("components", {}).items():
             fn = ws.factory(spec["fn"])
+            if fn is None:
+                raise ValueError(f"RooFit factory failed for component '{comp}': {spec['fn']}")
             if comp == "model":
                 model = fn
         if model is None:
             raise ValueError("model not set")
+        if not hasattr(model, "fitTo"):
+            raise ValueError(f"model component has no fitTo method: {fit_spec.get('components', {}).get('model')}")
 
         m = ws.var(var_m)
 
@@ -67,22 +71,34 @@ class RooFitter:
             )
 
         dh = ROOT.RooDataHist("dh", "dh", [m], Import=hist)
-        if range_m := fit_spec.get("range"):
+        range_m = fit_spec.get("range")
+        if range_m:
             m.setRange("fit", *range_m)
-            # print(f'using fit range: {range_m}, var range: {m.getRange("fit")}')
-            res = model.fitTo(dh, Range=(range_m[0], range_m[1]), Save=True, PrintLevel=-1, Strategy=1, MaxCalls=5000)
+            fit_range = (range_m[0], range_m[1])
+            res = model.fitTo(dh, Range=fit_range, Save=True, PrintLevel=-1, Strategy=1, MaxCalls=5000)
             if level == "data" and USE_EXTMODEL:
                 for v in ws.allVars():
                     v.setConstant(True)
-                res = extmodel.fitTo(
-                    dh, Range=(range_m[0], range_m[1]), Save=True, PrintLevel=-1, Strategy=1, MaxCalls=5000
-                )
+                res = extmodel.fitTo(dh, Range=fit_range, Save=True, PrintLevel=-1, Strategy=1, MaxCalls=5000)
         else:
             res = model.fitTo(dh, Save=True, PrintLevel=-1, Strategy=1, MaxCalls=5000)
             if level == "data" and USE_EXTMODEL:
                 for v in ws.allVars():
                     v.setConstant(True)
                 res = extmodel.fitTo(dh, Save=True, PrintLevel=-1, Strategy=1, MaxCalls=5000)
+        if res.status() != 0:
+            if range_m:
+                res = model.fitTo(dh, Range=fit_range, Save=True, PrintLevel=-1, Strategy=2, MaxCalls=10000)
+                if level == "data" and USE_EXTMODEL:
+                    for v in ws.allVars():
+                        v.setConstant(True)
+                    res = extmodel.fitTo(dh, Range=fit_range, Save=True, PrintLevel=-1, Strategy=2, MaxCalls=10000)
+            else:
+                res = model.fitTo(dh, Save=True, PrintLevel=-1, Strategy=2, MaxCalls=10000)
+                if level == "data" and USE_EXTMODEL:
+                    for v in ws.allVars():
+                        v.setConstant(True)
+                    res = extmodel.fitTo(dh, Save=True, PrintLevel=-1, Strategy=2, MaxCalls=10000)
         frame = None
         residual_frame = None
         if plot:

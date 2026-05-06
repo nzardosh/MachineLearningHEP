@@ -11,7 +11,6 @@
 #   along with this program. if not, see <https://www.gnu.org/licenses/>. #
 
 import copy
-import functools
 import itertools
 import math
 
@@ -108,9 +107,9 @@ class ProcesserJets(Processer):
         for obs in self.cfg("observables", {}):
             var = obs.split("-")
             for v in var:
-                if v in self.binarrays_obs:
-                    continue
                 for level in ("gen", "det"):
+                    if v in self.binarrays_obs[level]:
+                        continue
                     if binning := self.cfg(f"observables.{v}.bins_{level}_var"):
                         self.binarrays_obs[level][v] = np.asarray(binning, "d")
                     elif binning := self.cfg(f"observables.{v}.bins_{level}_fix"):
@@ -202,7 +201,7 @@ class ProcesserJets(Processer):
 
         if "eecweight" in observables:
             self.logger.debug("EEC")
-            df["eecweight"] = df[["fPairPt", "fJetPt"]].apply((lambda ar: ar.fPairPt / ar.fJetPt**2), axis=1)
+            df["eecweight"] = df[["fPairJetPt", "fJetPt"]].apply((lambda ar: ar.fPairJetPt / ar.fJetPt**2), axis=1)
 
         if self.cfg("hfjet", True):
             if "dr" in observables:
@@ -219,7 +218,7 @@ class ProcesserJets(Processer):
                 df["zpar_num"] = df.jetPx * df.hfPx + df.jetPy * df.hfPy + df.jetPz * df.hfPz
                 df["zpar_den"] = df.jetPx * df.jetPx + df.jetPy * df.jetPy + df.jetPz * df.jetPz
                 df["zpar"] = df.zpar_num / df.zpar_den
-                df[df["zpar"] >= 1.0]["zpar"] = 0.999  # move 1 to last bin
+                df.loc[df["zpar"] >= 1.0, "zpar"] = 0.999  # move 1 to last bin
 
         self.logger.debug("done")
         if verify:
@@ -233,6 +232,39 @@ class ProcesserJets(Processer):
         mask = (dfi.index.get_level_values(0) % 100) < frac * 100
         return dfi[mask], dfi[~mask]
 
+    def _read_skim_concat(self, mptfiles, index):
+        frames = []
+        for bin_idx in self.active_bins_skim:
+            path = mptfiles[bin_idx][index]
+            try:
+                frames.append(read_df(path))
+            except OSError as exc:
+                self.logger.warning("Skipping unreadable skim <%s>: %s", path, exc)
+        if not frames:
+            return pd.DataFrame()
+        return pd.concat(frames)
+
+    def _ensure_mc_tags(self, df, level="gen"):
+        """Derive MC tag columns when missing (e.g. empty skim written before unpack applied tags)."""
+        if df.empty:
+            return df
+        df = df.copy()
+        if level == "gen":
+            if "ismcsignal" not in df.columns and "fFlagMcMatchGen" in df.columns:
+                df["ismcsignal"] = (df["fFlagMcMatchGen"].abs() == 1).astype(int)
+            if "ismcprompt" not in df.columns and "fOriginMcGen" in df.columns:
+                df["ismcprompt"] = (df["fOriginMcGen"] == 1).astype(int)
+            if "ismcfd" not in df.columns and "fOriginMcGen" in df.columns:
+                df["ismcfd"] = (df["fOriginMcGen"] == 2).astype(int)
+        else:
+            if "ismcsignal" not in df.columns and "fFlagMcMatchRec" in df.columns:
+                df["ismcsignal"] = (df["fFlagMcMatchRec"].abs() == 1).astype(int)
+            if "ismcprompt" not in df.columns and "fOriginMcRec" in df.columns:
+                df["ismcprompt"] = (df["fOriginMcRec"] == 1).astype(int)
+            if "ismcfd" not in df.columns and "fOriginMcRec" in df.columns:
+                df["ismcfd"] = (df["fOriginMcRec"] == 2).astype(int)
+        return df
+
     # region histomass
     # pylint: disable=too-many-branches
     def process_histomass_single(self, index):
@@ -244,17 +276,21 @@ class ProcesserJets(Processer):
             histonorm.SetBinContent(1, len(dfquery(dfevtorig, self.s_evtsel)))
             if self.l_collcnt:
                 dfcollcnt = read_df(self.l_collcnt[index])
+                def counter_sum(series):
+                    return sum(float(ar[0]) if hasattr(ar, "__getitem__") else float(ar) for ar in series)
                 ser_collcnt = dfcollcnt[self.cfg(f"counter_read_{self.datatype}")]
-                collcnt_read = functools.reduce(lambda x, y: float(x) + float(y), (ar[0] for ar in ser_collcnt))
+                collcnt_read = counter_sum(ser_collcnt)
                 self.logger.info("sampled %g collisions", collcnt_read)
                 histonorm.SetBinContent(2, collcnt_read)
                 ser_collcnt = dfcollcnt[self.cfg("counter_tvx")]
-                collcnt_tvx = functools.reduce(lambda x, y: float(x) + float(y), (ar[0] for ar in ser_collcnt))
+                collcnt_tvx = counter_sum(ser_collcnt)
                 histonorm.SetBinContent(3, collcnt_tvx)
             if self.l_bccnt:
                 dfbccnt = read_df(self.l_bccnt[index])
                 ser_bccnt = dfbccnt[self.cfg("counter_tvx")]
-                bccnt_tvx = functools.reduce(lambda x, y: float(x) + float(y), (ar[0] for ar in ser_bccnt))
+                def counter_sum(series):
+                    return sum(float(ar[0]) if hasattr(ar, "__getitem__") else float(ar) for ar in series)
+                bccnt_tvx = counter_sum(ser_bccnt)
                 histonorm.SetBinContent(4, bccnt_tvx)
             if self.l_wgt:
                 self.logger.info("Filling event weights")
@@ -272,18 +308,26 @@ class ProcesserJets(Processer):
             histonorm.Write()
 
             if self.datatype != "fd":
-                df = pd.concat(read_df(self.mptfiles_recosk[bin][index]) for bin in self.active_bins_skim)
+                df = self._read_skim_concat(self.mptfiles_recosk, index)
             else:
-                df = pd.concat(read_df(self.mptfiles_gensk[bin][index]) for bin in self.active_bins_skim)
+                df = self._read_skim_concat(self.mptfiles_gensk, index)
+            if df.empty:
+                self.logger.warning("Empty reco skim for index=%s, skipping histomass", index)
+                return
             # remove entries outside of kinematic range (should be taken care of by projections in analyzer)
             df = df.loc[(df.fJetPt >= min(self.binarray_ptjet)) & (df.fJetPt < max(self.binarray_ptjet))]
             df = df.loc[(df.fPt >= min(self.bins_analysis[:, 0])) & (df.fPt < max(self.bins_analysis[:, 1]))]
 
-            # Custom skimming cuts
+            if df.empty:
+                self.logger.warning("Empty reco skim after kinematic cuts for index=%s, skipping histomass", index)
+                return
             if self.datatype != "fd":
+                if "mlBkgScore" not in df.columns:
+                    self.logger.warning("missing mlBkgScore for index=%s, skipping histomass", index)
+                    return
                 df = self.apply_cuts_all_ptbins(df)
 
-            if col_evtidx := self.cfg("cand_collidx"):
+            if (col_evtidx := self.cfg("cand_collidx")) and col_evtidx in df.columns:
                 h = create_hist("h_ncand", ";N_{cand}", 20, 0.0, 20.0)
                 fill_hist(h, df.groupby([col_evtidx]).size(), write=True)
 
@@ -356,8 +400,6 @@ class ProcesserJets(Processer):
         levels_eff = ["gen", "det", "genmatch", "detmatch", "detmatch_gencuts"]
         levels_effkine = ["gen", "det"]
         cuts = ["nocuts", "cut"]
-        observables = self.cfg("observables", {})
-        observables.update({"fPt": {"label": "p_{T}^{HF} (GeV/#it{c})"}})
         h_eff = {
             (cat, level): create_hist(
                 f"h_ptjet-pthf_{cat}_{level}",
@@ -424,6 +466,31 @@ class ProcesserJets(Processer):
                         *[self.binarrays_obs[level][v] for v in var],
                     )
 
+            # kinematic fPt response (not a shape observable; needed by analyzer_jets Run 3 efficiencies)
+            obs = "fPt"
+            var = [obs]
+            dim = len(var) + 1
+            h_response[(cat, obs)] = h = create_hist(
+                f"h_response_{cat}_{obs}",
+                f"response matrix {obs}",
+                self.binarrays_ptjet["det"][var[0]],
+                *[self.binarrays_obs["det"][v] for v in var],
+                self.binarrays_ptjet["gen"][var[0]],
+                *[self.binarrays_obs["gen"][v] for v in var],
+                self.binarray_pthf,
+            )
+            get_axis(h, 0).SetTitle("p_{T}^{jet} (GeV/#it{c})")
+            get_axis(h, dim).SetTitle("p_{T}^{jet} (GeV/#it{c})")
+            get_axis(h, 2 * dim).SetTitle("p_{T}^{HF} (GeV/#it{c})")
+            for i, v in enumerate(var, 1):
+                get_axis(h, i).SetTitle("p_{T}^{HF} (GeV/#it{c})")
+                get_axis(h, i + dim).SetTitle("p_{T}^{HF} (GeV/#it{c})")
+            for cut in cuts:
+                h_effkine[(cat, "det", cut, obs)] = he = project_hist(h, list(range(dim)), {}).Clone()
+                he.SetName(f"h_effkine_{cat}_det_{cut}_{obs}")
+                h_effkine[(cat, "gen", cut, obs)] = he = project_hist(h, list(range(dim, 2 * dim)), {}).Clone()
+                he.SetName(f"h_effkine_{cat}_gen_{cut}_{obs}")
+
         # create partial versions for closure testing
         h_effkine_frac = copy.deepcopy(h_effkine)
         h_response_frac = copy.deepcopy(h_response)
@@ -453,19 +520,28 @@ class ProcesserJets(Processer):
                     "fNSub2",
                     "fJetNConstituents",
                     "fEnergyMother",
-                    # "fPairTheta",
-                    # "fPairPt",
+                    "fPairJetTheta",
+                    "fPairJetPt",
                 ]
             )
-            cols = None
 
             # read generator level
-            dfgen_orig = pd.concat(
-                read_df(self.mptfiles_gensk[bin][index], columns=cols) for bin in self.active_bins_skim
-            )
+            dfgen_orig = self._ensure_mc_tags(self._read_skim_concat(self.mptfiles_gensk, index), level="gen")
+            if dfgen_orig.empty:
+                self.logger.warning("Empty gen skim for index=%s, skipping efficiency chunk", index)
+                return
+
             df = self._calculate_variables(dfgen_orig)
             df = df.rename(lambda name: name + "_gen", axis=1)
             if self.cfg("hfjet", True):
+                required_cols = ["ismcsignal_gen", "ismcprompt_gen", "ismcfd_gen"]
+                missing = [c for c in required_cols if c not in df.columns]
+                if missing:
+                    self.logger.warning(
+                        "Skipping efficiency chunk for index=%s because missing columns: %s", index, missing
+                    )
+                    return
+
                 dfgen = {
                     "pr": df.loc[(df.ismcsignal_gen == 1) & (df.ismcprompt_gen == 1)],
                     "np": df.loc[(df.ismcsignal_gen == 1) & (df.ismcfd_gen == 1)],
@@ -474,11 +550,10 @@ class ProcesserJets(Processer):
                 dfgen = {"pr": df, "np": df}
 
             # read detector level
-            if cols:
-                cols.extend(self.cfg("efficiency.extra_cols", []))
-                if idx := self.cfg("efficiency.index_match"):
-                    cols.append(idx)
-            df = pd.concat(read_df(self.mptfiles_recosk[bin][index], columns=cols) for bin in self.active_bins_skim)
+            df = self._ensure_mc_tags(self._read_skim_concat(self.mptfiles_recosk, index), level="det")
+            if df.empty:
+                self.logger.warning("Empty reco skim for index=%s, skipping efficiency chunk", index)
+                return
 
             # Custom skimming cuts
             df = self.apply_cuts_all_ptbins(df)
@@ -519,7 +594,8 @@ class ProcesserJets(Processer):
                 else:
                     self.logger.error("No matching, could not fill matched detector-level histograms")
 
-            for obs, cat in itertools.product(observables, cats):
+            cfg_observables = self.cfg("observables", {})
+            for obs, cat in itertools.product(cfg_observables, cats):
                 if cat in dfmatch and dfmatch[cat] is not None:
                     self._prepare_response(dfmatch[cat], h_effkine, h_response, cat, obs)
                     f = self.cfg("frac_mcana", 0.2)
@@ -529,6 +605,9 @@ class ProcesserJets(Processer):
 
                 # TODO: move outside of loop?
                 if self.cfg("closure.use_matched"):
+                    if cat not in dfmatch or dfmatch[cat] is None:
+                        self.logger.warning("No matching for %s, skipping mctruth", cat)
+                        continue
                     self.logger.info("using matched for truth")
                     df_mcana, _ = self.split_df(dfmatch[cat], self.cfg("frac_mcana", 0.2))
                 else:
@@ -544,6 +623,10 @@ class ProcesserJets(Processer):
                 )
                 df_mcana = self._explode_arraycols(df_mcana, [var[icol] for icol in arraycols])
                 fill_hist(h_mctruth[(cat, obs)], df_mcana[["fJetPt_gen", "fPt_gen", *(f"{v}_gen" for v in var)]])
+
+            for cat in cats:
+                if cat in dfmatch and dfmatch[cat] is not None:
+                    self._prepare_response(dfmatch[cat], h_effkine, h_response, cat, "fPt")
 
             for name, obj in itertools.chain(
                 h_eff.items(),
@@ -645,7 +728,7 @@ class ProcesserJets(Processer):
         ]
         for i, v in enumerate(var, 2):
             df = df.loc[(df[f"{v}_gen"] >= axes_gen[i].GetXmin()) & (df[f"{v}_gen"] < axes_gen[i].GetXmax())]
-        fill_hist(h_effkine[("gen", "nocuts", obs)], df[["fJetPt_gen", "fPt", *(f"{v}_gen" for v in var)]])
+        fill_hist(h_effkine[("gen", "nocuts", obs)], df[["fJetPt_gen", "fPt_gen", *(f"{v}_gen" for v in var)]])
         df = df.loc[
             (df.fJetPt >= axes_det[0].GetXmin())
             & (df.fJetPt < axes_det[0].GetXmax())
@@ -654,4 +737,4 @@ class ProcesserJets(Processer):
         ]
         for i, v in enumerate(var, 2):
             df = df.loc[(df[v] >= axes_det[i].GetXmin()) & (df[v] < axes_det[i].GetXmax())]
-        fill_hist(h_effkine[("gen", "cut", obs)], df[["fJetPt_gen", "fPt", *(f"{v}_gen" for v in var)]])
+        fill_hist(h_effkine[("gen", "cut", obs)], df[["fJetPt_gen", "fPt_gen", *(f"{v}_gen" for v in var)]])

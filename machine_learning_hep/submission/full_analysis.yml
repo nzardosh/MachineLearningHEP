@@ -8,10 +8,14 @@ conversion: # pkl
     activate: true
   data:
     activate: true
+  fd:
+    activate: true
 skimming: # pkl_skimmed (pklsk), pkl_evtcounter_all
   mc:
     activate: true
   data:
+    activate: true
+  fd:
     activate: true
 merging: # pkl_skimmed_merge_for_ml (pklskml)
   mc:
@@ -64,6 +68,8 @@ analysis:
   mc:
     histomass: true # processer: process_histomass
     efficiency: true # processer: process_efficiency
+  fd:
+    histomass: true # processer: process_histomass (produces fd masshisto.root for estimate_feeddown with fd_input: sim)
   steps: # analyzer methods to run (uncomment to activate)
     ##### Inclusive hadrons
     # fit:
