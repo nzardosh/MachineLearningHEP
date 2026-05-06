@@ -47,6 +47,127 @@ from .utilities import (
 )
 from .utilities_files import appendmainfoldertolist, create_folder_struc, createlist, list_folders
 
+
+def _hf_index_branch_candidates(hf_index_col, hf_join):
+    """Branch names to try for the per-jet HF index (Array vs scalar variants)."""
+    candidates = []
+    if alt := hf_join.get("hf_index_alt"):
+        candidates.append(alt)
+    candidates.append(hf_index_col)
+    if hf_index_col.startswith("fIndexArray"):
+        candidates.append("fIndex" + hf_index_col[len("fIndexArray") :])
+    elif hf_index_col.startswith("fIndex"):
+        candidates.append("fIndexArray" + hf_index_col[len("fIndex") :])
+    seen = set()
+    return [name for name in candidates if not (name in seen or seen.add(name))]
+
+
+def _resolve_hf_index_branch(anchor_tree, hf_index_col, hf_join):
+    """Resolve HF index branch on the anchor jet tree (Hyperloop vs POWHEG naming)."""
+    keys = set(anchor_tree.keys())
+    for name in _hf_index_branch_candidates(hf_index_col, hf_join):
+        if name in keys:
+            return name, name.startswith("fIndexArray")
+    raise uproot.exceptions.KeyInFileError(
+        None,
+        anchor_tree.name,
+        _hf_index_branch_candidates(hf_index_col, hf_join),
+        "anchor HF index",
+    )
+
+
+def _o2_first_indices(index_column, *, jagged=True):
+    """First HF row index from O2 jagged index arrays or scalar indices (one per jet)."""
+    if not jagged:
+        return np.asarray(index_column, dtype=np.int64)
+    return np.fromiter(
+        (int(entry[0]) if entry is not None and len(entry) > 0 else -1 for entry in index_column),
+        dtype=np.int64,
+        count=len(index_column),
+    )
+
+
+def _o2_lookup_by_index(column, indices):
+    """Row-wise lookup into a flat O2 table column."""
+    values = np.asarray(column)
+    n_values = len(values)
+    if values.ndim > 1 or values.dtype == object:
+        out = np.empty(len(indices), dtype=object)
+        for j, idx in enumerate(indices):
+            out[j] = values[idx] if 0 <= idx < n_values else None
+        return out
+    valid = (indices >= 0) & (indices < n_values)
+    out = np.empty(len(indices), dtype=values.dtype)
+    out[valid] = values[indices[valid]]
+    return out
+
+
+def _dfread_o2_hf_join(rdir, trees, cols, hf_join, logger):
+    """Read jet tables joining HF candidates via O2 index arrays (not row position).
+
+  Jet-anchored: each row is a jet; HF columns are looked up from flat tables via the
+  per-jet index array. HF candidates not assigned to any jet are never read. Jets with
+  no HF match (empty index) or an out-of-range index are dropped.
+    """
+    anchor = hf_join["anchor"]
+    hf_index_col = hf_join["hf_index"]
+    hf_trees = hf_join.get("hf_trees", [])
+
+    ai = trees.index(anchor)
+    anchor_cols = list(cols[ai])
+    anchor_tree = rdir[anchor]
+    hf_index_branch, jagged_index = _resolve_hf_index_branch(anchor_tree, hf_index_col, hf_join)
+    if hf_index_branch != hf_index_col:
+        logger.debug("using HF index branch %s (configured as %s)", hf_index_branch, hf_index_col)
+    read_anchor_cols = anchor_cols if hf_index_branch in anchor_cols else anchor_cols + [hf_index_branch]
+    anchor_data = anchor_tree.arrays(expressions=read_anchor_cols, library="np")
+    df = pd.DataFrame({col: anchor_data[col] for col in anchor_cols})
+    hf_idx = _o2_first_indices(anchor_data[hf_index_branch], jagged=jagged_index)
+    valid = np.ones(len(df), dtype=bool)
+
+    if hf_trees:
+        n_hf = max(rdir[tree].num_entries for tree in hf_trees)
+        has_hf = hf_idx >= 0
+        in_range = hf_idx < n_hf
+        valid = has_hf & in_range
+        n_no_hf = int((~has_hf).sum())
+        n_oob = int((has_hf & ~in_range).sum())
+        if n_no_hf:
+            logger.debug(
+                "dropping %d/%d jets without HF match (anchor %s)",
+                n_no_hf,
+                len(df),
+                anchor,
+            )
+        if n_oob:
+            logger.warning(
+                "dropping %d/%d jets with out-of-range HF index (anchor %s, n_hf=%d)",
+                n_oob,
+                len(df),
+                anchor,
+                n_hf,
+            )
+
+    for tree, col in zip(trees, cols, strict=True):
+        if tree == anchor:
+            continue
+        tree_data = rdir[tree].arrays(expressions=col, library="np")
+        if tree in hf_trees:
+            for var in col:
+                df[var] = _o2_lookup_by_index(tree_data[var], hf_idx)
+            continue
+        tree_df = pd.DataFrame({var: tree_data[var] for var in col})
+        if len(tree_df) != len(df):
+            msg = f"tree {tree} has {len(tree_df)} rows, expected {len(df)} (anchor {anchor})"
+            logger.error(msg)
+            raise ValueError(msg)
+        df = pd.concat([df, tree_df], axis=1)
+
+    if not valid.all():
+        df = df.loc[valid].reset_index(drop=True)
+
+    return df
+
 pd.options.mode.chained_assignment = None
 
 
@@ -379,7 +500,7 @@ class Processer:  # pylint: disable=too-many-instance-attributes
         )
 
     def unpack(self, file_index, max_no_keys=None):  # pylint: disable=too-many-branches, too-many-locals
-        def dfread(rdir, trees, cols, idx_name=None):
+        def dfread(rdir, trees, cols, idx_name=None, hf_join=None):
             """Read DF from multiple (joinable) O2 tables"""
             try:
                 if not isinstance(trees, list):
@@ -388,16 +509,19 @@ class Processer:  # pylint: disable=too-many-instance-attributes
                 # if all(type(var) is str for var in vars): vars = [vars]
                 if not all(name in rdir for name in trees):
                     self.logger.critical("Missing trees: %s", trees)
-                df = None
-                for tree, col in zip([rdir[name] for name in trees], cols, strict=True):
-                    try:
-                        data = tree.arrays(expressions=col, library="np")
-                        dfnew = pd.DataFrame(columns=col, data=data)
-                        df = pd.concat([df, dfnew], axis=1)
-                    except Exception as e:  # pylint: disable=broad-except
-                        tree.show(name_width=50)
-                        self.logger.critical("Failed to read data frame from tree %s: %s", tree.name, str(e))
-                        sys.exit()
+                if hf_join:
+                    df = _dfread_o2_hf_join(rdir, trees, cols, hf_join, self.logger)
+                else:
+                    df = None
+                    for tree, col in zip([rdir[name] for name in trees], cols, strict=True):
+                        try:
+                            data = tree.arrays(expressions=col, library="np")
+                            dfnew = pd.DataFrame(columns=col, data=data)
+                            df = pd.concat([df, dfnew], axis=1)
+                        except Exception as e:  # pylint: disable=broad-except
+                            tree.show(name_width=50)
+                            self.logger.error("Failed to read data frame from tree %s: %s", tree.name, str(e))
+                            raise
                 df["df"] = int(df_no)
                 if idx_name:
                     # df.rename_axis(idx_name, inplace=True)
@@ -463,47 +587,54 @@ class Processer:  # pylint: disable=too-many-instance-attributes
                             elif dfuse(spec):
                                 trees.append(tree)
                                 cols.append(spec["vars"])
-                        df = dfread(rdir, trees, cols, idx_name=df_spec.get("index", None))
+                        df = dfread(
+                            rdir,
+                            trees,
+                            cols,
+                            idx_name=df_spec.get("index", None),
+                            hf_join=df_spec.get("hf_join"),
+                        )
                         dfappend(df_name, df)
 
         for df_name, df_spec in self.df_read.items():
-            if dfuse(df_spec) and not dfs[df_name].empty:
-                if "extra" in df_spec:
-                    self.logger.debug(" %s -> extra", df_name)
-                    for col_name, col_val in df_spec["extra"].items():
-                        self.logger.debug(" %s -> %s", col_name, col_val)
-                        dfs[df_name][col_name] = dfs[df_name].eval(col_val)
-                if "extract_component" in df_spec:
-                    self.logger.debug(" %s -> extract_component", df_name)
-                    specs = df_spec["extract_component"]
-                    for spec in specs:
-                        var, newvar, component = spec["var"], spec["newvar"], spec["component"]
-                        dfs[df_name][newvar] = dfs[df_name][var].apply(lambda x, comp=component: x[comp])
-                if "filter" in df_spec:
-                    self.logger.debug(" %s -> filter", df_name)
-                    dfquery(dfs[df_name], df_spec["filter"], inplace=True)
-                if "tags" in df_spec:
-                    self.logger.debug(" %s -> tags", df_name)
-                    for tag, value in df_spec["tags"].items():
-                        if dfuse(value):
-                            var = dfs[df_name][value["var"]]
+            if not dfuse(df_spec) or df_name not in dfs:
+                continue
+            if "extra" in df_spec:
+                self.logger.debug(" %s -> extra", df_name)
+                for col_name, col_val in df_spec["extra"].items():
+                    self.logger.debug(" %s -> %s", col_name, col_val)
+                    dfs[df_name][col_name] = dfs[df_name].eval(col_val)
+            if "extract_component" in df_spec:
+                self.logger.debug(" %s -> extract_component", df_name)
+                specs = df_spec["extract_component"]
+                for spec in specs:
+                    var, newvar, component = spec["var"], spec["newvar"], spec["component"]
+                    dfs[df_name][newvar] = dfs[df_name][var].apply(lambda x, comp=component: x[comp])
+            if "filter" in df_spec:
+                self.logger.debug(" %s -> filter", df_name)
+                dfquery(dfs[df_name], df_spec["filter"], inplace=True)
+            if "tags" in df_spec:
+                self.logger.debug(" %s -> tags", df_name)
+                for tag, value in df_spec["tags"].items():
+                    if dfuse(value):
+                        var = dfs[df_name][value["var"]]
 
-                            if value.get("abs", False):
-                                var = var.abs()
+                        if value.get("abs", False):
+                            var = var.abs()
 
-                            dfs[df_name][tag] = (var == value["req"]).astype(int)
+                        dfs[df_name][tag] = (var == value["req"]).astype(int)
 
-                            # dfs[df_name][tag] = np.array(
-                            #    tag_bit_df(dfs[df_name], value["var"], value["req"], value.get("abs", False)), dtype=int)
+                        # dfs[df_name][tag] = np.array(
+                        #    tag_bit_df(dfs[df_name], value["var"], value["req"], value.get("abs", False)), dtype=int)
 
-                if "swap" in df_spec:
-                    self.logger.debug(" %s -> swap", df_name)
-                    spec = df_spec["swap"]
-                    if dfuse(spec):
-                        swapped = dfs[df_name][spec["cand"]] == dfs[df_name][spec["var_swap"]] + 1
-                        for var in spec["vars"]:
-                            dfs[df_name][var] = np.logical_and(dfs[df_name][var] == 1, swapped)
-                self.logger.debug(" %s -> done", df_name)
+            if "swap" in df_spec:
+                self.logger.debug(" %s -> swap", df_name)
+                spec = df_spec["swap"]
+                if dfuse(spec):
+                    swapped = dfs[df_name][spec["cand"]] == dfs[df_name][spec["var_swap"]] + 1
+                    for var in spec["vars"]:
+                        dfs[df_name][var] = np.logical_and(dfs[df_name][var] == 1, swapped)
+            self.logger.debug(" %s -> done", df_name)
 
         if self.df_merge:
             for m_spec in self.df_merge:

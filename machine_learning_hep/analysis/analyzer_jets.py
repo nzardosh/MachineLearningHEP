@@ -374,26 +374,49 @@ class AnalyzerJets(Analyzer):
             hist.Scale(1.0 / eff)
 
     # region fitting
-    def _roofit_mass(self, level, hist, ipt, pdfnames, param_names, fitcfg, roows=None, filename=None):
+    def _select_mass_roofit_cfg(self, level, range_pthf, iptjet):
+        """Pick the mass_roofit entry for this fit stage and HF pT range."""
+        for entry in self.cfg("mass_roofit", []):
+            if (lvl := entry.get("level")) and lvl != level:
+                continue
+            if entry.get("level") is None and level != "data":
+                continue
+            if (ptspec := entry.get("ptrange")) and (
+                ptspec[0] > range_pthf[0] or ptspec[1] < range_pthf[1]
+            ):
+                continue
+            if iptjet is not None and not entry.get("per_ptjet"):
+                continue
+            return entry
+        return None
+
+    def _roofit_mass(self, level, hist, ipt, pdfnames, param_names, fitcfg, roows=None, filename=None, iptjet=None):
         if fitcfg is None:
             return None, None
-        res, ws, frame, residual_frame = self.fitter.fit_mass_new(hist, pdfnames, fitcfg, level, roows, True)
-        if any(test_none := [o is None for o in (res, ws, frame, filename)]):
-            self.logger.critical("fit_mass_new failed: got %s", str(test_none))
+        try:
+            res, ws, frame, residual_frame = self.fitter.fit_mass_new(hist, pdfnames, fitcfg, level, roows, True)
+        except (ValueError, UserWarning) as exc:
+            self.logger.error("fit_mass_new failed for %s ipt %d: %s", level, ipt, exc)
+            return None, None
+        if res is None or ws is None or frame is None or filename is None:
+            self.logger.critical("fit_mass_new failed: missing fit result for %s ipt %d", level, ipt)
+            return None, None
         frame.SetTitle(f"inv. mass for p_{{T}} {self.bins_candpt[ipt]} - {self.bins_candpt[ipt + 1]} GeV/c")
         c = TCanvas()
 
         chi2 = frame.chiSquare()
-        if "ptjet" not in filename:
+        if iptjet is None:
             self.h_fit_results[level]["chi2"].SetBinContent(ipt + 1, chi2)
-        if chi2 > 5.0 and level != "predata":
+        chi2_limit = 5.0 if iptjet is None else 15.0
+        if chi2 > chi2_limit and level != "predata":
             self.logger.error(
-                "Roofit fit is too bad: %s, ipt: %d, pthf: %g-%g, Chi2 = %g",
+                "Roofit fit is too bad: %s, ipt: %d, pthf: %g-%g, Chi2 = %g%s",
                 level,
                 ipt,
                 self.bins_candpt[ipt],
                 self.bins_candpt[ipt + 1],
                 chi2,
+                f", iptjet {iptjet}" if iptjet is not None else "",
             )
 
         textInfoRight = create_text_info(0.62, 0.68, 1.0, 0.89)
@@ -407,7 +430,7 @@ class AnalyzerJets(Analyzer):
                 ws, res, pdfnames, param_names, mean_sgn, sigma_sgn
             )
             add_text_info_perf(textInfoLeft, sig, sig_err, bkg, bkg_err, s_over_b, s_over_b_err, signif, signif_err)
-            if "ptjet" not in filename:
+            if iptjet is None:
                 self.h_fit_results[level]["significance"].SetBinContent(ipt + 1, signif)
                 self.h_fit_results[level]["significance"].SetBinError(ipt + 1, signif_err)
 
@@ -524,18 +547,13 @@ class AnalyzerJets(Analyzer):
                         else:
                             self.logger.error("Fit failed for %s bin %d", level, ipt)
                     if self.cfg("mass_roofit"):
-                        for entry in self.cfg("mass_roofit", []):
-                            if (lvl := entry.get("level")) and lvl != level:
-                                continue
-                            if (ptspec := entry.get("ptrange")) and (
-                                ptspec[0] > range_pthf[0] or ptspec[1] < range_pthf[1]
-                            ):
-                                continue
-                            fitcfg = entry
-                            break
-                        self.logger.debug("Using fit config for %i: %s", ipt, fitcfg)
-                        if iptjet is not None and not fitcfg.get("per_ptjet"):
+                        fitcfg = self._select_mass_roofit_cfg(level, range_pthf, iptjet)
+                        if fitcfg is None:
+                            self.logger.warning(
+                                "No mass_roofit config for %s iptjet %s ipt %d", level, iptjet, ipt
+                            )
                             continue
+                        self.logger.debug("Using fit config for %i: %s", ipt, fitcfg)
                         # TODO: link datasel to fit stage
                         if datasel := fitcfg.get("datasel"):
                             hist_name = f"h_mass-ptjet-pthf_{datasel}"
@@ -560,6 +578,9 @@ class AnalyzerJets(Analyzer):
                             for par in fitcfg.get("fix_params_ptjet", []):
                                 if var := roows.var(par):
                                     var.setConstant(True)
+                            for par in fitcfg.get("free_params_ptjet", []):
+                                if var := roows.var(par):
+                                    var.setConstant(False)
                         roo_res, roo_ws = self._roofit_mass(
                             level,
                             h_invmass,
@@ -569,7 +590,18 @@ class AnalyzerJets(Analyzer):
                             fitcfg,
                             roows,
                             f"roofit/h_mass_fitted{jetptlabel}_{string_range_pthf(range_pthf)}_{level}.png",
+                            iptjet,
                         )
+                        if roo_res is None or roo_ws is None:
+                            self.logger.error(
+                                "Roofit failed: %s, ipt: %d, pthf: %g-%g%s",
+                                level,
+                                ipt,
+                                self.bins_candpt[ipt],
+                                self.bins_candpt[ipt + 1],
+                                f", iptjet {iptjet}" if iptjet is not None else "",
+                            )
+                            continue
                         if roo_res.status() != 0:
                             self.logger.error(
                                 "Roofit failed: %s, ipt: %d, pthf: %g-%g",
@@ -700,8 +732,11 @@ class AnalyzerJets(Analyzer):
             self.logger.info("Scaling sidebands in ptjet-%s bins: %s using %s", label, bins_ptjet, fh_sideband)
             hx = project_hist(fh_sideband, (0,), {}) if get_dim(fh_sideband) > 1 else fh_sideband
             for iptjet in bins_ptjet:
-                if iptjet and hx.GetBinContent(iptjet) <= 0:
-                    continue
+                if iptjet is not None:
+                    n = hx.GetBinContent(iptjet + 1)
+                    self.logger.info("Need to scale in ptjet %i: %g", iptjet, n)
+                    if n <= 0:
+                        continue
                 rws = self.roo_ws.get((mcordata, iptjet, ipt))
                 if not rws:
                     self.logger.error("Falling back to incl. roows for %s-iptjet%i-ipt%i", mcordata, iptjet, ipt)
@@ -719,7 +754,7 @@ class AnalyzerJets(Analyzer):
                     else:
                         for ibin in range(get_nbins(fh_subtracted, 1)):
                             scale_bin(fh_sideband, areaNormFactor, iptjet + 1, ibin + 1)
-                    fh_subtracted.Add(fh_sideband, -1.0)
+            fh_subtracted.Add(fh_sideband, -1.0)
         self._save_hist(fh_sideband, f"sideband/h_ptjet{label}_sideband_{string_range_pthf(range_pthf)}_{mcordata}.png")
 
         self._clip_neg(fh_subtracted)
@@ -735,6 +770,7 @@ class AnalyzerJets(Analyzer):
             fh["signal"].Draw()
             fh_sideband.SetLineColor(ROOT.kCyan)
             fh_sideband.Draw("same")
+            fh_subtracted.SetLineColor(ROOT.kBlack)
             fh_subtracted.Draw("same")
             fh_subtracted.GetYaxis().SetRangeUser(
                 0.0, max(fh_subtracted.GetMaximum(), fh["signal"].GetMaximum(), fh_sideband.GetMaximum())
@@ -1118,10 +1154,15 @@ class AnalyzerJets(Analyzer):
                         if fh := rfile.Get(f"h_mass-ptjet-pthf{label}"):
                             h3_fd_gen_orig[var] = project_hist(fh, list(range(1, get_dim(fh))), {})
                     h_norm = rfile.Get("histonorm")
-                    powheg_xsection_avg = h_norm.GetBinContent(6) / h_norm.GetBinContent(5)
-                    powheg_xsection_scale_factor = powheg_xsection_avg / h_norm.GetBinContent(5)
-                    self.logger.info("powheg_xsection_scale_factor = %f", powheg_xsection_scale_factor)
-                    self.logger.info("POWHEG luminosity (mb^{-1}): %g", 1. / powheg_xsection_scale_factor)
+                    n_powheg = h_norm.GetBinContent(5)
+                    sum_xs_powheg = h_norm.GetBinContent(6)
+                    powheg_xsection_avg = sum_xs_powheg / n_powheg
+                    # FD mass histograms are filled unweighted; scale to data yield with L*BR/N_POWHEG.
+                    # Do not multiply by powheg_xsection_avg again (that re-applies event weights).
+                    powheg_xsection_scale_factor = 1.0 / n_powheg
+                    self.logger.info("powheg_xsection_avg = %g", powheg_xsection_avg)
+                    self.logger.info("powheg_xsection_scale_factor = %g", powheg_xsection_scale_factor)
+                    self.logger.info("POWHEG luminosity (mb^{-1}): %g", 1.0 / powheg_xsection_avg)
 
             case fd_input:
                 self.logger.critical("Invalid feeddown input %s", fd_input)
@@ -1230,13 +1271,14 @@ class AnalyzerJets(Analyzer):
             )
             self.logger.info("Scaling feed-down with data luminosity (mb^{-1}): %g", luminosity_data)
             hfeeddown_det.Scale(luminosity_data)
-            luminosity_mc = (
-                self.n_colls_read["mc"]
-                / self.n_colls_tvx["mc"]
-                * self.n_bcs_tvx["mc"]
-                / self.cfg("xsection_inel")
-                * self.cfg("lumi_scale_mc")
-            )
+            #luminosity_mc = (
+                #self.n_colls_read["mc"]
+                #/ self.n_colls_tvx["mc"]
+                #* self.n_bcs_tvx["mc"]
+                #/ self.cfg("xsection_inel")
+                #* self.cfg("lumi_scale_mc")
+            #)
+            luminosity_mc = 1.0
             self.logger.info("Scaling feed-down with MC luminosity (mb^{-1}): %g", luminosity_mc)
             hfeeddown_det_mc.Scale(luminosity_mc)
 
@@ -1264,7 +1306,7 @@ class AnalyzerJets(Analyzer):
             n = h_response.GetBinContent(np.asarray([hbin[i][0] for i in range(2 * dim + 1)], "i"))
             eff = h_eff.GetBinContent(hbin[2 * dim][0]) if h_eff else 1.0
             if np.isclose(eff, 0.0):
-                self.logger.error("efficiency 0 for %s", hbin[4])
+                self.logger.error("efficiency 0 for %s", hbin[2 * dim])
                 continue
             if (cnt_gen := h_gen.GetBinContent(*(hbin[i][0] for i in range(dim, 2 * dim)))) > 0.0:
                 fac = 1.0

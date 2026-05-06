@@ -31,22 +31,22 @@ config: dict[str, dict[str, dict]] = {
             "label": "D^{0}",
         },
         "lc": {
-            "activate": 1,
+            "activate": 0,
             "label": "#Lambda^{#plus}_{c}",
         },
         "dplus": {
-            "activate": 1,
+            "activate": 0,
             "label": "D^{#plus}",
         },
         "incl": {
-            "activate": 1,
+            "activate": 0,
             "label": "inclusive",
         },
     },
     "observables": {
         "zg": {
             "activate": 1,
-            "range": [0.1, 0.5],
+            "range": [-0.1, 0.5],
             "label": "#it{z}_{g}",
             "leg": [0.7, 0.65, 0.85, 0.85],
         },
@@ -85,7 +85,7 @@ config: dict[str, dict[str, dict]] = {
             "hp24": {
                 "label": "HP24",
                 "activate": 1,
-                "path_file": "/home/vkucera/hp24/d0/results.root",
+                "path_file": "/home/vkucera/mlhep/hp24/d0/results.root",
                 "colour": 0,
                 "name_hist": {
                     "zg": "h_zg_sidesub_unfolded_data_ptjet-15-30_sel_selfnorm",
@@ -120,6 +120,123 @@ config: dict[str, dict[str, dict]] = {
                     "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
                 },
             },
+            "2023_new_Nima": {
+                "label": "2023 Nima",
+                "activate": 1,
+                "path_file": "/home/nzardosh/mlhep/d0jet_QM25_New/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 3,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
+            "2022_new_Nima": {
+                "label": "2022 Nima",
+                "activate": 1,
+                "path_file": "/home/nzardosh/mlhep/d0jet_HP24_New/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 4,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-30_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-30_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-30_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-30_sel_selfnorm",
+                },
+            },
+            "ppRef_new_Nima": {
+                "label": "pp ref Nima",
+                "activate": 1,
+                "path_file": "/home/nzardosh/mlhep/d0jet_ppRef_New/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 5,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
+            "2023_Luigi_Run2Eff": {
+                "label": "2023 Luigi Run 2 eff",
+                "activate": 0,
+                "path_file": "/home/nzardosh/mlhep/d0jet_2023_Luigi_Run2Eff/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 6,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
+            "2023_Luigi_Run3Eff": {
+                "label": "2023 Luigi Run 3 eff",
+                "activate": 0,
+                "path_file": "/home/nzardosh/mlhep/d0jet_2023_Luigi_Run3Eff/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 7,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
+            "d0jet_ppRef_Data_2023_MC": {
+                "label": "pp Ref data 2023 MC",
+                "activate": 0,
+                "path_file": "/home/nzardosh/mlhep/d0jet_ppRef_Data_2023_MC/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 8,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
+            "2023_new_Nima_Fixed": {
+                "label": "2023 Nima Fixed",
+                "activate": 1,
+                "path_file": "/home/nzardosh/mlhep/d0jet_QM25_New_Fixed/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 9,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
+            "2022_new_Nima_Fixed": {
+                "label": "2022 Nima Fixed",
+                "activate": 1,
+                "path_file": "/home/nzardosh/mlhep/d0jet_HP24_New_Fixed/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 10,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
+            "ppRef_new_Nima_Fixed": {
+                "label": "pp ref Nima Fixed",
+                "activate": 1,
+                "path_file": "/home/nzardosh/mlhep/d0jet_ppRef_New_Fixed/jet_obs/"
+                "default/default/data/results_all/results.root",
+                "colour": 11,
+                "name_hist": {
+                    "zg": "h_zg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "rg": "h_rg_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "nsd": "h_nsd_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                    "zpar": "h_zpar_sidesub_unfolded_data_ptjet-15-20_sel_selfnorm",
+                },
+            },
         },
         "lc": {
             "run2": {
@@ -134,7 +251,7 @@ config: dict[str, dict[str, dict]] = {
             "hp24": {
                 "label": "HP24",
                 "activate": 1,
-                "path_file": "/home/vkucera/hp24/lc/results.root",
+                "path_file": "/home/vkucera/mlhep/hp24/lc/results.root",
                 "colour": 0,
                 "name_hist": {
                     "zg": "h_zg_sidesub_unfolded_data_ptjet-15-30_sel_selfnorm",
@@ -249,6 +366,7 @@ for obs in observables:
             leg_pos=config["observables"][obs]["leg"],
             range_x=config["observables"][obs]["range"],
             path=DIR_OUTPUT,
+            suffix='pdf',
         )
         histograms_obs += histograms
         labels_obs += [f"{config['particles'][particle]['label']}: {lab}" for lab in labels]
@@ -263,4 +381,5 @@ for obs in observables:
         leg_pos=config["observables"][obs]["leg"],
         range_x=config["observables"][obs]["range"],
         path=DIR_OUTPUT,
+        suffix='pdf',
     )
